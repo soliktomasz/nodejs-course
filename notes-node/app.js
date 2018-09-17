@@ -12,12 +12,13 @@ console.log('Command: ', command);
 
 if (command === 'add') {
    var note = notes.addNote(argv.title, argv.body);
-   var message = note ? `Note ${argv.title} added succesfully!` : `Note with title ${argv.title} already exist!`;
+   var message = note ? notes.logNote(note) : `Note with title ${argv.title} already exist!`;
    console.log(message);
 } else if (command === 'list') {
     notes.getAll();
 } else if (command === 'read') {
-    notes.getNote(argv.title);
+    var note = notes.getNote(argv.title);
+    note ? notes.logNote(note) :  console.log("Note doesn't exist");
 } else if (command === 'remove') {
     var noteRemoved = notes.removeNote(argv.title);
     var message = noteRemoved ? 'Note was removed' : 'Note not found';
