@@ -5,7 +5,7 @@ const { ObjectID } = require('mongodb');
 const { app } = require('./../server');
 const { Todo } = require('./../models/todo');
 const { User } = require('./../models/user');
-const {todos, populateTodos, users, populateUsers} = require('./seed/seed'); 
+const { todos, populateTodos, users, populateUsers } = require('./seed/seed');
 
 beforeEach(populateUsers);
 beforeEach(populateTodos);
@@ -195,7 +195,7 @@ describe('POST /users', () => {
 
         requst(app)
             .post('/users')
-            .send({email, password})
+            .send({ email, password })
             .expect(200)
             .expect((res) => {
                 expect(res.headers['x-auth']).toBeTruthy();
@@ -206,11 +206,11 @@ describe('POST /users', () => {
                     return done(err);
                 }
 
-                User.findOne({email}).then((user) => {
+                User.findOne({ email }).then((user) => {
                     expect(user).toBeTruthy();
                     expect(user.password).not.toBe(password);
                     done();
-                });
+                }).catch((e) => done(e));
             });
     });
 
@@ -228,7 +228,68 @@ describe('POST /users', () => {
     it('Should not create user if email is in use', (done) => {
         requst(app)
             .post('/users')
-            .send({email: users[0].email, password: 'password'})
+            .send({ email: users[0].email, password: 'password' })
+            .expect(400)
+            .end(done);
+    });
+});
+
+describe('POST /users/login', () => {
+    it('Should login a user', (done) => {
+        requst(app)
+            .post('/users/login')
+            .send({ email: users[1].email, password: users[1].password })
+            .expect(200)
+            .expect((res) => {
+                expect(res.headers['x-auth']).toBeTruthy();
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+
+                User.findById(users[1]._id).then((user) => {
+                    expect(user.toObject().tokens[0]).toMatchObject({
+                        access: 'auth',
+                        token: res.headers['x-auth']
+                    });
+                    done();
+                }).catch((e) => done(e));
+            });
+    });
+
+    it('Should return error when auth token is not returned', (done) => {
+        requst(app)
+        .post('/users/login')
+        .send({ email: users[1].email, password: users[1].password + 'add' })
+        .expect(400)
+        .expect((res) => {
+            expect(res.headers['x-auth']).toBeFalsy();
+        })
+        .end((err, res) => {
+            if (err) {
+                return done(err);
+            }
+
+            User.findById(users[1]._id).then((user) => {
+                expect(user.tokens.length).toBe(0);
+                done();
+            }).catch((e) => done(e));
+        });
+    })
+
+    it('Should return incorrect password for existing user', (done) => {
+        requst(app)
+            .post('/users/login')
+            .send({ email: users[0].email, password: 'pwd123' })
+            .expect(400)
+            .end(done);
+    });
+
+    it('Should return error for non existing user', (done) => {
+        requst(app)
+            .post('/users/login')
+            .send({ email: 'nonexisting@test.com', password: 'pwd123' })
             .expect(400)
             .end(done);
     });
